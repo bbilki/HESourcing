@@ -146,6 +146,7 @@ struct summary
 summary ss;vector <summary> SS;
 
 int RunNo=0;
+bool isPhaseIHEP17=false;
 
 int readmap()
 {
@@ -157,18 +158,6 @@ int readmap()
 		infile>>mp.crate>>mp.slot>>mp.fiber>>mp.channel>>mp.ieta>>mp.iphi>>mp.depth>>mp.box>>mp.tileind>>mp.tilename;
 // 		cout<<mp.crate<<" "<<mp.slot<<" "<<mp.fiber<<" "<<mp.channel<<" "<<mp.ieta<<" "<<mp.iphi<<" "<<mp.depth<<" "<<mp.box<<" "<<mp.tileind<<" "<<mp.tilename<<endl;
 		MP.push_back(mp);
-	}
-	infile.close();
-}
-
-int readsummary()
-{
-	ifstream infile("MeanQperTile.txt");
-	while(!infile.eof())
-	{
-		infile>>ss.RunNo>>ss.crate>>ss.slot>>ss.fiber>>ss.channel>>ss.ieta>>ss.iphi>>ss.depth>>ss.layer>>ss.SL>>ss.meanQ>>ss.meanQerr>>ss.sigmaQ>>ss.sigmaQerr;
-// 		cout<<ss.RunNo<<" "<<ss.crate<<" "<<ss.slot<<" "<<ss.fiber<<" "<<ss.channel<<" "<<ss.ieta<<" "<<ss.iphi<<" "<<ss.depth<<" "<<ss.layer<<" "<<ss.SL<<" "<<ss.meanQ<<" "<<ss.meanQerr<<" "<<ss.sigmaQ<<" "<<ss.sigmaQerr;
-		SS.push_back(ss);
 	}
 	infile.close();
 }
@@ -236,6 +225,7 @@ int analyze()
 		{
 			sprintf(hname,"%d %d %d %d %s",MP[ed.mapind->at(i1)].ieta,MP[ed.mapind->at(i1)].iphi,MP[ed.mapind->at(i1)].depth,ed.layer,stype[ed.type].c_str());
 			string hname1(hname);
+			isPhaseIHEP17=false;if(RunNo>=287582 && MP[H.mapind].iphi>=63 && MP[H.mapind].iphi<=66 && MP[H.mapind].ieta>0) isPhaseIHEP17=true;
 			hind=-1;
 			for(int i2=0;i2<HH.size();i2++)
 			{
@@ -274,12 +264,19 @@ int analyze()
 				H.ADCperReel[2]=new TH1D(hname,hname,300,2500.5,8500.5);
 // 				H.ADCperReel[2]=new TH1D(hname,hname,120,2500.5,8500.5);
 				sprintf(hname,"QSpectrum %s",hname1.c_str());
-// 				H.ADCSpec=new TH1D(hname,hname,250,-0.05,0.2);
-// 				H.ADCSpec->GetXaxis()->SetTitle("Mean Charge (fC)");H.ADCSpec->GetXaxis()->CenterTitle();
-// 				H.ADCSpec->GetYaxis()->SetTitle("Events / 10^{-5} fC");H.ADCSpec->GetYaxis()->CenterTitle();
-				H.ADCSpec=new TH1D(hname,hname,200000,0.,20.);
-				H.ADCSpec->GetXaxis()->SetTitle("Mean Charge (fC)");H.ADCSpec->GetXaxis()->CenterTitle();
-				H.ADCSpec->GetYaxis()->SetTitle("Events / 10^{-5} fC");H.ADCSpec->GetYaxis()->CenterTitle();
+				
+				if(isPhaseIHEP17)
+				{
+					H.ADCSpec=new TH1D(hname,hname,100,0.,20.);
+					H.ADCSpec->GetXaxis()->SetTitle("Mean Charge (fC)");H.ADCSpec->GetXaxis()->CenterTitle();
+					H.ADCSpec->GetYaxis()->SetTitle("Events / 0.2 fC");H.ADCSpec->GetYaxis()->CenterTitle();
+				}
+				else
+				{
+					H.ADCSpec=new TH1D(hname,hname,250,-0.05,0.2);
+					H.ADCSpec->GetXaxis()->SetTitle("Mean Charge (fC)");H.ADCSpec->GetXaxis()->CenterTitle();
+					H.ADCSpec->GetYaxis()->SetTitle("Events / 10^{-5} fC");H.ADCSpec->GetYaxis()->CenterTitle();
+				}
 				H.nHgtTh=0;
 				HH.push_back(H);
 				hind=HH.size()-1;
@@ -290,8 +287,10 @@ int analyze()
 				{
 					HH[hind].ADCperReel[0]->Fill(ed.reel,ed.meanadc->at(i1)[i4]);
 					HH[hind].ADCperReel[1]->Fill(ed.reel);
-					HH[hind].ADCperReel[2]->Fill(ed.reel,ed.N->at(i1)[i4]);
-					if(ed.meanadc->at(i1)[i4]>0.015) {HH[hind].nHgtTh++;}
+// 					HH[hind].ADCperReel[2]->Fill(ed.reel,ed.N->at(i1)[i4]);
+					HH[hind].ADCperReel[2]->Fill(ed.reel,pow(ed.meanadc->at(i1)[i4],2.));
+					if(ed.meanadc->at(i1)[i4]>0.015 && !isPhaseIHEP17) {HH[hind].nHgtTh++;}
+					if(ed.meanadc->at(i1)[i4]>1. && isPhaseIHEP17) {HH[hind].nHgtTh++;}
 				}
 			}
 		}
@@ -310,13 +309,27 @@ int analyze()
 			errs.push_back(HH[i2].ADCperReel[0]->GetBinError(i3));
 		}
 		HH[i2].ADCperReel[0]->Divide(HH[i2].ADCperReel[1]);
+		HH[i2].ADCperReel[2]->Divide(HH[i2].ADCperReel[1]);
 		for(int i3=1;i3<=HH[i2].ADCperReel[0]->GetNbinsX();i3++)
 		{
 // 			HH[i2].ADCperReel[0]->SetBinError(i3,HH[i2].ADCperReel[0]->GetBinError(i3)/sqrt(HH[i2].ADCperReel[1]->GetBinContent(i3)));
 // 			HH[i2].ADCperReel[0]->SetBinError(i3,HH[i2].ADCperReel[0]->GetBinError(i3)/sqrt(HH[i2].ADCperReel[2]->GetBinContent(i3)));
-			if(HH[i2].ADCperReel[2]->GetBinContent(i3)>0)
+			
+			
+			
+// 			if(HH[i2].ADCperReel[2]->GetBinContent(i3)>0)
+// 			{
+// 				HH[i2].ADCperReel[0]->SetBinError(i3,sqrt(errs[i3-1]/HH[i2].ADCperReel[2]->GetBinContent(i3)));
+// 			}
+// 			else
+// 			{
+// 				HH[i2].ADCperReel[0]->SetBinError(i3,0.);
+// 			}
+			
+			
+			if(HH[i2].ADCperReel[1]->GetBinContent(i3)>0)
 			{
-				HH[i2].ADCperReel[0]->SetBinError(i3,sqrt(errs[i3-1]/HH[i2].ADCperReel[2]->GetBinContent(i3)));
+				HH[i2].ADCperReel[0]->SetBinError(i3,sqrt((HH[i2].ADCperReel[2]->GetBinContent(i3)-pow(HH[i2].ADCperReel[0]->GetBinContent(i3),2.))/HH[i2].ADCperReel[1]->GetBinContent(i3)));
 			}
 			else
 			{
@@ -327,8 +340,10 @@ int analyze()
 		int nPgtTh=0;
 		for(int i3=1;i3<=HH[i2].ADCperReel[0]->GetNbinsX();i3++)
 		{
-			if(HH[i2].ADCperReel[0]->GetBinContent(i3)>0.015) nPgtTh++;
+			if(HH[i2].ADCperReel[0]->GetBinContent(i3)>0.015 && !isPhaseIHEP17) nPgtTh++;
+			if(HH[i2].ADCperReel[0]->GetBinContent(i3)>1. && isPhaseIHEP17) nPgtTh++;
 		}
+		NHgtTh->Fill(HH[i2].nHgtTh);
 		if(nPgtTh<3)
 		{
 			HH[i2]=HH[HH.size()-1];
@@ -339,12 +354,12 @@ int analyze()
 // 		HH[i2].ADCperReel[0]->Fit(tf2,"q","q",2500.,8500.);
 // 		nchi2=tf2->GetChisquare()/tf2->GetNDF();
 // 		NormChi2->Fill(nchi2);
-		NHgtTh->Fill(HH[i2].nHgtTh);
 // 		sprintf(hname,"%s %f",HH[i2].ADCperReel[0]->GetName(),nchi2);
 // 		HH[i2].ADCperReel[0]->SetTitle(hname);
 // 		HH[i2].ADCperReel[0]->Write();
 	}
-	int colors[20]={1,2,3,4,5,6,7,8,9,21,11,12,13,14,15,16,17,18,19,20};
+// 	int colors[20]={1,2,3,4,5,6,7,8,9,21,11,12,13,14,15,16,17,18,19,20};
+	int colors[22]={1,2,3,4,6,7,8,9,12,22,32,42,30,40,41,43,44,45,46,47,38,49};
 	vector <int> processedLayers;
 	TCanvas* cc2=new TCanvas("cc2","cc2",600,600);
 	gStyle->SetOptStat(0);
@@ -379,12 +394,22 @@ int analyze()
 				HH[i3].ADCperReel[0]->Draw("same");
 				ic++;
 				if(HH[i3].ADCperReel[0]->GetBinContent(HH[i3].ADCperReel[0]->GetMaximumBin())>lprofymax) lprofymax=HH[i3].ADCperReel[0]->GetBinContent(HH[i3].ADCperReel[0]->GetMaximumBin());
-				if(HH[i3].ADCperReel[0]->FindFirstBinAbove(0.01)<fb) fb=HH[i3].ADCperReel[0]->FindFirstBinAbove(0.01);
-				if(HH[i3].ADCperReel[0]->FindLastBinAbove(0.01)>lb) lb=HH[i3].ADCperReel[0]->FindLastBinAbove(0.01);
+				
+				if(!isPhaseIHEP17)
+				{
+					if(HH[i3].ADCperReel[0]->FindFirstBinAbove(0.01)<fb) fb=HH[i3].ADCperReel[0]->FindFirstBinAbove(0.01);
+					if(HH[i3].ADCperReel[0]->FindLastBinAbove(0.01)>lb) lb=HH[i3].ADCperReel[0]->FindLastBinAbove(0.01);
+				}
+				else
+				{
+					if(HH[i3].ADCperReel[0]->FindFirstBinAbove(5.)<fb) fb=HH[i3].ADCperReel[0]->FindFirstBinAbove(5.);
+					if(HH[i3].ADCperReel[0]->FindLastBinAbove(5.)>lb) lb=HH[i3].ADCperReel[0]->FindLastBinAbove(5.);
+				}
 // 				HH[i3].ADCperReel[0]->Write();
 			}
 		}
 		lprofymax+=0.01;
+		if(isPhaseIHEP17){lprofymax+=1.5;}
 		HH[i2].ADCperReel[0]->GetXaxis()->SetRangeUser(HH[i2].ADCperReel[0]->GetBinCenter(fb-5),HH[i2].ADCperReel[0]->GetBinCenter(lb+5));
 		HH[i2].ADCperReel[0]->GetYaxis()->SetRangeUser(0.005,lprofymax);
 		processedLayers.push_back(HH[i2].layer);
@@ -427,8 +452,16 @@ int analyze()
 // 		HH[i2].startreel=HH[i2].ADCperReel[0]->GetBinCenter(startbin);
 // 		HH[i2].endreel=HH[i2].ADCperReel[0]->GetBinCenter(endbin);
 		
-		HH[i2].startreel=HH[i2].ADCperReel[0]->GetBinCenter(HH[i2].ADCperReel[0]->FindFirstBinAbove(0.01));
-		HH[i2].endreel=HH[i2].ADCperReel[0]->GetBinCenter(HH[i2].ADCperReel[0]->FindLastBinAbove(0.01));
+		if(!isPhaseIHEP17)
+		{
+			HH[i2].startreel=HH[i2].ADCperReel[0]->GetBinCenter(HH[i2].ADCperReel[0]->FindFirstBinAbove(0.01));
+			HH[i2].endreel=HH[i2].ADCperReel[0]->GetBinCenter(HH[i2].ADCperReel[0]->FindLastBinAbove(0.01));
+		}
+		else
+		{
+			HH[i2].startreel=HH[i2].ADCperReel[0]->GetBinCenter(HH[i2].ADCperReel[0]->FindFirstBinAbove(0.1));
+			HH[i2].endreel=HH[i2].ADCperReel[0]->GetBinCenter(HH[i2].ADCperReel[0]->FindLastBinAbove(0.1));
+		}
 // 		cout<<i2<<endl;
 // 		HH[i2].ADCperReel[0]->Print("all");
 // 		cout<<endl<<endl;
@@ -562,8 +595,6 @@ int analyze()
 // 		if(i%1000==0) cout<<"Event :"<<i<<" / "<<tree->GetEntries()<<endl;
 // 	}
 	
-// 	readsummary();
-	
 	cc2->cd();
 	gStyle->SetOptTitle(1);
 // 	gStyle->SetOptStat(1);
@@ -571,7 +602,8 @@ int analyze()
 	outroot->cd();
 	
 	TF1* tf1=new TF1("tf1","gaus",-0.05,0.2);
-	TF1 *func = new TF1("fit",fitf,0.,0.2,7);
+// 	TF1 *func = new TF1("fit",fitf,0.,0.2,7);
+	TF1 *func = new TF1("fit",fitf,0.,20.,7);
 	func->SetParameters(30.,0.1,0.01,0.1,0.1,0.1,0.1);
 // 	func->FixParameter(2,-0.0652);
 // 	func->SetParameter(2,-0.052);
@@ -587,8 +619,8 @@ int analyze()
 		func->SetParLimits(2,0.,1.);
 		func->SetParLimits(3,0.,1.);
 		func->SetParLimits(5,0.,5.);
-// 		HH[i2].ADCSpec->Fit(func,"q","q",HH[i2].ADCSpec->GetBinCenter(HH[i2].ADCSpec->FindFirstBinAbove(0.)),HH[i2].ADCSpec->GetBinCenter(HH[i2].ADCSpec->FindLastBinAbove(0.)));
-		HH[i2].ADCSpec->Fit(func,"q","q",0.,0.2);
+		HH[i2].ADCSpec->Fit(func,"q","q",HH[i2].ADCSpec->GetBinCenter(HH[i2].ADCSpec->FindFirstBinAbove(0.)),HH[i2].ADCSpec->GetBinCenter(HH[i2].ADCSpec->FindLastBinAbove(0.)));
+// 		HH[i2].ADCSpec->Fit(func,"q","q",0.,0.2);
 		if((func->GetChisquare()/func->GetNDF())<fnchi2)
 		{
 			fnchi2=(func->GetChisquare()/func->GetNDF());
@@ -609,16 +641,17 @@ int analyze()
 		func->SetParameter(1,fitparams[1]);
 		func->SetParLimits(1,0.,0.2);
 		func->SetParameter(2,fitparams[2]);
-		func->SetParLimits(2,0.,1.);
+		func->SetParLimits(2,1e-3,1.);
 // 		func->FixParameter(3,fitparams[3]);
 		func->SetParameter(3,fitparams[3]);
 // 		func->SetParLimits(3,0.,1.);
-		func->SetParLimits(3,1e-4,1.);
+		func->SetParLimits(3,1e-4,10.);
 		func->FixParameter(4,fitparams[4]);
 // 		func->FixParameter(5,fitparams[5]);
 		func->SetParameter(5,fitparams[5]);
 // 		func->SetParLimits(5,0.,5.);
-		func->SetParLimits(5,0.,10.);
+// 		func->SetParLimits(5,0.,10.);
+		func->FixParameter(5,fitparams[5]);
 		func->FixParameter(6,fitparams[6]);
 		
 // 		for(int i1=0;i1<7;i1++)

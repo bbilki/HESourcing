@@ -40,7 +40,7 @@ cd Files/reNTupler
 ./reNTupler $1
 wait
 mv N2_$1.root ../../NTuples2
-mv H2_$1.root ../../Histos/$1
+mv H2_$1.root ../../Histos
 wait
 cd -
 
@@ -48,6 +48,8 @@ cd Files
 ./plotter $1
 wait
 mv *.png ../Plots/$1/
+wait
+mv Results_$1.root ../Histos
 wait
 cd -
 # 
@@ -61,7 +63,8 @@ tar -cf plots.tar $1
 wait
 gzip plots.tar
 wait
-scp -P 53222 plots.tar.gz bbilki@feynman.physics.uiowa.edu:/var/www/html/HESourcing
+# scp -P 53222 plots.tar.gz bbilki@feynman.physics.uiowa.edu:/var/www/html/HESourcing
+scp -P 53222 plots.tar.gz hfSX5@feynman.physics.uiowa.edu:/var/www/html/HESourcing
 wait
 # ssh -p 53222 bbilki@feynman.physics.uiowa.edu "cd /var/www/html/HESourcing ; tar -zxf /var/www/html/HESourcing/plots.tar.gz ; rm plots.tar.gz ; ./makePlotList.sh"
 ssh -p 53222 hfSX5@feynman.physics.uiowa.edu "cd /var/www/html/HESourcing ; tar -zxf /var/www/html/HESourcing/plots.tar.gz ; rm plots.tar.gz ; ./makePlotList.sh"
