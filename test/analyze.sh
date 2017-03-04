@@ -63,7 +63,8 @@ gzip plots.tar
 wait
 scp -P 53222 plots.tar.gz bbilki@feynman.physics.uiowa.edu:/var/www/html/HESourcing
 wait
-ssh -p 53222 bbilki@feynman.physics.uiowa.edu "cd /var/www/html/HESourcing ; tar -zxf /var/www/html/HESourcing/plots.tar.gz ; rm plots.tar.gz ; ./makePlotList.sh"
+# ssh -p 53222 bbilki@feynman.physics.uiowa.edu "cd /var/www/html/HESourcing ; tar -zxf /var/www/html/HESourcing/plots.tar.gz ; rm plots.tar.gz ; ./makePlotList.sh"
+ssh -p 53222 hfSX5@feynman.physics.uiowa.edu "cd /var/www/html/HESourcing ; tar -zxf /var/www/html/HESourcing/plots.tar.gz ; rm plots.tar.gz ; ./makePlotList.sh"
 wait
 rm plots.tar.gz
 cd -
